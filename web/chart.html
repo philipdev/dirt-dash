@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dirt Rally Charts</title>
+    <style>
+        .throttle {
+            fill: green;
+        }
+        .speed {
+            fill: blue;
+        }
+        .brake {
+            fill: red;
+        }
+        .steer {
+            fill: black;
+        }
+        .speedRearLeft {
+
+        }
+        .speedRearRight {
+
+        }
+        .speedFrontRight {
+
+        }
+        .speedFrontLeft {
+
+        }
+
+        .frontDiff {
+            fill : #e80900;
+        }
+        .rearDiff {
+            fill : #00fc4e;
+        }
+        .centerDiff {
+            fill : #3b73a8;
+        }
+
+    </style>
+</head>
+<body>
+<script src="d3.js" charset="utf-8"></script>
+<!--script src="/socket.io/socket.io.js"></script-->
+<script>
+
+    var svg = d3.select('body').append('svg');
+    svg.attr('width', '1024px')
+    svg.attr('height', '800px').style('background', '#dff0d8')
+
+    var suspensionScale = d3.scale.linear();
+    suspensionScale.domain([-40, 40]);
+    suspensionScale.range([0, 800]);
+
+    function updateChartLine(clazz, getY) {
+        var throttle = svg.selectAll('circle.' + clazz).data(data);
+        throttle.attr('r',2)
+                .attr('cx', function (data, i) {
+                    return i;
+                })
+                .attr('cy',getY );
+
+        throttle.exit().remove();
+        throttle.enter().append('circle').attr('class', clazz);
+    }
+
+    function update(data) {
+
+        updateChartLine('throttle', function (data) {
+            return 800 - (data.throttle * 800);
+        });
+        updateChartLine('brake', function (data) {
+            return 800 - (data.brake * 800);
+        });
+        updateChartLine('speed', function (data) {
+            return 800 - (data.speed * 3.6 * 4);
+        });
+
+        updateChartLine('steer', function (data) {
+            return 400 + (data.steering * 400);
+        });
+
+
+    }
+</script>
+<script>
+	var lastTime = new Date().getTime();
+	var data = [];
+	function getData() {
+		var time = new Date().getTime();
+		d3.xhr('/').post(JSON.stringify({from: lastTime,  to: time }), function(error, response) {
+			if(error) {
+				console.log(error);
+			} else {
+				var result = JSON.parse(response.responseText);
+				console.log('result', result.length);
+				var expireTime = time - 120000;
+				for(var i=data.length; i >=0; i--) {
+					if(data.timestamp < expireTime) {
+						data.splice(0, i);
+						break;
+					}
+				}
+				// find last element larger older than 2 minutes
+				if(result.length > 0) {
+					Array.prototype.push.apply(data, result); // still need to remove for the given time frame
+					update(data);
+					lastTime = time; // use last element in the array
+				}
+			}
+			setTimeout(getData, 1000);
+		});
+	}
+	getData();
+
+
+</script>
+</body>
+</html>

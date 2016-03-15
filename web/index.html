@@ -1,277 +1,291 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
+    <meta charset="utf-8">
 
-<style>
+    <style>
 
 
-	html, body, .content {
-		padding:0;
-		margin:0;
-		border:0;
-		width:100%;
-		height:100%;
-	}
-	body {
-		background:navy;
-	}
-	.gear-text {
-		text-anchor:start;
-		dominant-baseline:hanging;
-		font-size:35px;
-		fill: mintcream;
-		font-family:Arial,Helvetica;
-	}
-	.speed {
-		fill:lightseagreen;
-		
-	}
-	
-	.speed-line-text {
-		font-size: 4px;
-		text-anchor: middle;
-		dominant-baseline: central;
-		fill: mintcream;
-	}
-	.speed-line {
-	
-		stroke-width: 0.35;
-		stroke: mintcream;
-	}
-	.speed-outline {
-		fill: mintcream;
-	}
-	.speed-text {
-		text-anchor:middle;
-		dominant-baseline:central;
-		font-family:Arial,Helvetica;
-		font-size: 20px;
-		fill: mintcream;
-	}
-	.subtitle-text {
-		font-size:5px;
-		text-anchor:middle;
-		fill: mintcream;
-	}
-	.throttle {
-		fill:turquoise;
-	}
-	.brake {
-		fill:crimson;
-	}
-	.content {
-		text-align:center;
-	}
-</style>
+        html, body, .content {
+            padding: 0;
+            margin: 0;
+            border: 0;
+            width: 100%;
+            height: 100%;
+        }
 
-<script src="http://d3js.org/d3.v3.min.js"></script>
+        body {
+            background: navy;
+        }
+
+        .gear-text {
+            text-anchor: start;
+            dominant-baseline: hanging;
+
+            font-size: 20px;
+            fill: mintcream;
+            font-family: Arial, Helvetica;
+        }
+
+        .speed {
+            fill: lightseagreen;
+
+        }
+
+        .speed-line-text {
+            font-size: 4px;
+            text-anchor: middle;
+            dominant-baseline: central;
+            fill: mintcream;
+        }
+
+        .speed-line {
+
+            stroke-width: 0.35;
+            stroke: mintcream;
+        }
+
+        .speed-outline {
+            fill: mintcream;
+        }
+
+        .speed-text {
+            text-anchor: middle;
+            dominant-baseline: central;
+            font-family: Arial, Helvetica;
+            font-size: 20px;
+            fill: mintcream;
+        }
+
+        .subtitle-text {
+            font-size: 5px;
+            text-anchor: middle;
+            fill: mintcream;
+        }
+
+        .throttle {
+            fill: turquoise;
+        }
+
+        .brake {
+            fill: crimson;
+        }
+
+        .content {
+            text-align: center;
+        }
+    </style>
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
 
 </head>
 <body>
 <script>
 
-function Meter(container, x ,y , radius, max, step, subtitle ) {
-	this.container = container;
-	this.x = x;
-	this.y = y;
-	this.radius = radius;
-	this.max = max;
-	this.subtitle = subtitle;
-	
-	this.speedScale = d3.scale.linear();
-	this.speedScale.domain([0,max]); // input
-	this.speedScale.range([-180  * (Math.PI/180) , 90 * (Math.PI/180)] ); // output
-	this.step = step;
-	this.innerRadius = this.radius * 0.85;
-	
-	this.throttleScale = d3.scale.linear();
-	this.throttleScale.domain([0.0,1.0]); // input
-	this.throttleScale.range([-180  * (Math.PI/180) , 90 * (Math.PI/180)] ); // output
-	
-}
+    function Meter(container, x, y, radius, max, step, subtitle) {
+        this.container = container;
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.max = max;
+        this.subtitle = subtitle;
 
-Meter.prototype.render = function() {
-	var angle, i;
-		
-	for(i=0; i <= this.max; i+=this.step) { 
-		angle = this.speedScale(i) + -90 * (Math.PI/180);
+        this.speedScale = d3.scale.linear();
+        this.speedScale.domain([0, max]); // input
+        this.speedScale.range([-180 * (Math.PI / 180), 90 * (Math.PI / 180)]); // output
+        this.step = step;
+        this.innerRadius = this.radius * 0.85;
 
-		this.container.append("text")
-		.attr('x',  this.x + this.radius + (this.innerRadius * 0.85 * Math.cos(angle)))
-		.attr('y',  this.y + this.radius + (this.innerRadius * 0.85 * Math.sin(angle)))
+        this.throttleScale = d3.scale.linear();
+        this.throttleScale.domain([0.0, 1.0]); // input
+        this.throttleScale.range([-180 * (Math.PI / 180), 90 * (Math.PI / 180)]); // output
 
-		.attr('class','speed-line-text')
-		
-		.text(i)
-		
-		this.container.append('line')
-		.attr('x1',  this.x + this.radius + (this.innerRadius * 0.95 * Math.cos(angle)))
-		.attr('y1',  this.y + this.radius + (this.innerRadius * 0.95 * Math.sin(angle)))
-		.attr('x2',  this.x + this.radius + (this.innerRadius * Math.cos(angle)))
-		.attr('y2',  this.y + this.radius + (this.innerRadius * Math.sin(angle)))
-		.attr('class','speed-line')
+    }
 
-	}
-	
-	this.speedoText = this.container.append("text")
-	.attr('x', this.x + this.radius)
-	.attr('y', this.y + this.radius)
-	
-	.attr('class', 'speed-text')
-	.text('0') // need to replace with every speed change
-	
-	this.container.append('text')
-	.attr('x',  this.x + this.radius + ( this.innerRadius * 0.9 * Math.cos(45 * (Math.PI/180))))
-	.attr('y',  this.y + this.radius + ( this.innerRadius * 0.9 * Math.sin(45 * (Math.PI/180))))
+    Meter.prototype.render = function () {
+        var angle, i;
 
-	.attr('class', 'subtitle-text' )
-	.text(this.subtitle);
-	
-	var speedoOutline = d3.svg.arc();
-	speedoOutline.startAngle(this.speedScale(0) );
-	speedoOutline.endAngle(this.speedScale(this.max) );
-	speedoOutline.innerRadius(this.innerRadius - 0.95)
-	speedoOutline.outerRadius(this.innerRadius);
-	
-	var speedoOutlinePath = this.createPath(this.container);
-	speedoOutlinePath.attr('d', speedoOutline);
-	speedoOutlinePath.attr('class', 'speed-outline');
-	
-	this.speedoPath = this.createPath(this.container);
-	//this.speedoPath.attr("d", this.speedoArc(this.max));
-	this.speedoPath.attr("class", "speed");
-	
-	this.throttlePath = this.createPath(this.container);
-	this.throttlePath.attr('class', 'throttle');
+        for (i = 0; i <= this.max; i += this.step) {
+            angle = this.speedScale(i) + -90 * (Math.PI / 180);
 
-	
-	this.brakePath = this.createPath(this.container);
-	this.brakePath.attr('class', 'brake');
-	
-}
+            this.container.append("text")
+                    .attr('x', this.x + this.radius + (this.innerRadius * 0.85 * Math.cos(angle)))
+                    .attr('y', this.y + this.radius + (this.innerRadius * 0.85 * Math.sin(angle)))
 
-Meter.prototype.createPath = function(container) {
-	var path = this.container.append("path");
-	path.attr("class", "arc");
-	path.attr("transform", "translate(" + (this.x + this.radius )+ "," + (this.y + this.radius) + ")");
-	return path;
-}
+                    .attr('class', 'speed-line-text')
 
-Meter.prototype.speedoArc = function(value) {
-	var speedo = d3.svg.arc();
-	speedo.startAngle(this.speedScale(0) );
-	speedo.endAngle(this.speedScale(value) );
+                    .text(i);
 
-	
-	speedo.innerRadius(this.innerRadius);
-	speedo.outerRadius(this.radius);
-	return speedo;
-}
+            this.container.append('line')
+                    .attr('x1', this.x + this.radius + (this.innerRadius * 0.95 * Math.cos(angle)))
+                    .attr('y1', this.y + this.radius + (this.innerRadius * 0.95 * Math.sin(angle)))
+                    .attr('x2', this.x + this.radius + (this.innerRadius * Math.cos(angle)))
+                    .attr('y2', this.y + this.radius + (this.innerRadius * Math.sin(angle)))
+                    .attr('class', 'speed-line')
 
-Meter.prototype.throthleArc = function(value) {
-	var arc = d3.svg.arc();
-	arc.startAngle(this.throttleScale(0) );
-	arc.endAngle(this.throttleScale(value) );
+        }
 
-	
-	arc.innerRadius(this.radius*0.97);
-	arc.outerRadius(this.radius);
-	
-	return arc;
-}
+        this.speedoText = this.container.append("text")
+                .attr('x', this.x + this.radius)
+                .attr('y', this.y + this.radius)
 
-Meter.prototype.brakeArc = function(value) {
-	var arc = d3.svg.arc();
-	arc.startAngle(this.throttleScale(1-value) );
-	arc.endAngle(this.throttleScale(1) );
+                .attr('class', 'speed-text')
+                .text('0'); // need to replace with every speed change
 
-	
-	arc.innerRadius(this.innerRadius * 1.03);
-	arc.outerRadius(this.innerRadius);
-	
-	return arc;
-}
+        this.container.append('text')
+                .attr('x', this.x + this.radius + ( this.innerRadius * 0.9 * Math.cos(45 * (Math.PI / 180))))
+                .attr('y', this.y + this.radius + ( this.innerRadius * 0.9 * Math.sin(45 * (Math.PI / 180))))
+                .attr('class', 'subtitle-text')
+                .text(this.subtitle);
 
-Meter.prototype.update = function(value, throttle, brake) {
-	this.speedoText.text(value);
-	this.speedoPath.attr("d", this.speedoArc(value)) 	
-	if(typeof throttle === 'number') {
-		this.throttlePath.attr("d", this.throthleArc(throttle)) 
-	} 
-	if(typeof brake === 'number') {
-		this.brakePath.attr("d", this.brakeArc(brake)) 
-	}
-}
+        var speedoOutline = d3.svg.arc();
+        speedoOutline.startAngle(this.speedScale(0));
+        speedoOutline.endAngle(this.speedScale(this.max));
+        speedoOutline.innerRadius(this.innerRadius - 0.95)
+        speedoOutline.outerRadius(this.innerRadius);
+
+        var speedoOutlinePath = this.createPath(this.container);
+        speedoOutlinePath.attr('d', speedoOutline);
+        speedoOutlinePath.attr('class', 'speed-outline');
+
+        this.speedoPath = this.createPath(this.container);
+        //this.speedoPath.attr("d", this.speedoArc(this.max));
+        this.speedoPath.attr("class", "speed");
+
+        this.throttlePath = this.createPath(this.container);
+        this.throttlePath.attr('class', 'throttle');
 
 
+        this.brakePath = this.createPath(this.container);
+        this.brakePath.attr('class', 'brake');
 
-var content = d3.select('body').append('div');
-content.attr('class', 'content')
+    };
 
-var speedoBox = content.append('span').append('svg');
-speedoBox.attr('viewBox', '0 0 100 100')
+    Meter.prototype.createPath = function (container) {
+        var path = this.container.append("path");
+        path.attr("class", "arc");
+        path.attr("transform", "translate(" + (this.x + this.radius ) + "," + (this.y + this.radius) + ")");
+        return path;
+    };
 
-
-var speedo = new Meter(speedoBox, 2, 2, 47, 200, 10, 'KM/H');
-speedo.render();
-speedo.update(100, 0.3,0.5);
-
-var rpmBox = content.append('span').append('svg');
-rpmBox.attr('viewBox', '0 0 100 100')
-function updateDimensions() {
-		var w = content[0][0].clientWidth;
-		var h = content[0][0].clientHeight;
-		console.log('client width, height', content, w,h);
-		var size =  0;
-		if(w > h) {
-			size = w / 2;
-			if(size > h) {
-				size = h;
-			}
-		} else {
-			size = h / 2;
-			if(size > w) {
-				size = w;
-			}
-		}
-		speedoBox.attr({
-			'width': size - 5,
-			'height': size - 5
-		});
-		rpmBox.attr({
-			'width': size - 5,
-			'height': size - 5
-		});
-		
+    Meter.prototype.speedoArc = function (value) {
+        var speedo = d3.svg.arc();
+        speedo.startAngle(this.speedScale(0));
+        speedo.endAngle(this.speedScale(value));
 
 
-}
-window.onresize = updateDimensions;
-updateDimensions();
+        speedo.innerRadius(this.innerRadius);
+        speedo.outerRadius(this.radius);
+        return speedo;
+    };
+
+    Meter.prototype.throttleArc = function (value) {
+        var arc = d3.svg.arc();
+        arc.startAngle(this.throttleScale(0));
+        arc.endAngle(this.throttleScale(value));
 
 
+        arc.innerRadius(this.radius * 0.97);
+        arc.outerRadius(this.radius);
 
-var rpm = new Meter(rpmBox, 5, 5, 45, 10000, 1000, 'RPM ');
-rpm.render();
-rpm.update(1000);	
-	
-var gear = rpmBox.append('text');
-gear.text('5')
-.attr('class','gear-text')
+        return arc;
+    };
+
+    Meter.prototype.brakeArc = function (value) {
+        var arc = d3.svg.arc();
+        arc.startAngle(this.throttleScale(1 - value));
+        arc.endAngle(this.throttleScale(1));
+
+
+        arc.innerRadius(this.innerRadius * 1.03);
+        arc.outerRadius(this.innerRadius);
+
+        return arc;
+    };
+
+    Meter.prototype.update = function (value, throttle, brake) {
+        this.speedoText.text(value);
+        this.speedoPath.attr("d", this.speedoArc(value))
+        if (typeof throttle === 'number') {
+            this.throttlePath.attr("d", this.throttleArc(throttle))
+        }
+        if (typeof brake === 'number') {
+            this.brakePath.attr("d", this.brakeArc(brake))
+        }
+    };
+
+
+    var content = d3.select('body').append('div').attr('class', 'content');
+
+    var speedoBox = content.append('span').append('svg').attr('viewBox', '0 0 100 100');
+
+
+    var speedo = new Meter(speedoBox, 2, 2, 47, 200, 10, 'KM/H');
+    speedo.render();
+    //speedo.update(100, 0.3,0.5);
+
+    var rpmBox = content.append('span').append('svg');
+    rpmBox.attr('viewBox', '0 0 100 100')
+    function updateDimensions() {
+        var w = content[0][0].clientWidth;
+        var h = content[0][0].clientHeight;
+        console.log('client width, height', content, w, h);
+        var size = 0;
+        if (w > h) {
+            size = w / 2;
+            if (size > h) {
+                size = h;
+            }
+        } else {
+            size = h / 2;
+            if (size > w) {
+                size = w;
+            }
+        }
+        speedoBox.attr({
+            'width': size - 5,
+            'height': size - 5
+        });
+        rpmBox.attr({
+            'width': size - 5,
+            'height': size - 5
+        });
+
+
+    }
+    window.onresize = updateDimensions;
+    updateDimensions();
+
+
+    var rpm = new Meter(rpmBox, 2, 2, 48, 10000, 1000, 'RPM ');
+    rpm.render();
+    //rpm.update(1000);
+
+    var gear = rpmBox.append('text').attr({
+        'class': 'gear-text',
+        x:2,
+        y:5
+    });
 
 
 </script>
 <script src="d3.js" charset="utf-8"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-	var socket = io.connect();
-	socket.on('update', function(msg) {
-		d3.select('.gear-text').text(msg.gear);
-		console.log(msg);
-		speedo.update(Math.round(msg.speed * 3.6), msg.throttle, msg.brake);
-		rpm.update(Math.round(msg.rpm*10));
-	});
+    var socket = io.connect();
+    socket.on('update', function (msg) {
+        var gear = d3.select('.gear-text');
+        if (msg.gear === 0) {
+            gear.text('N');
+        } else if (msg.gear === 10) {
+            gear.text('R');
+        } else {
+            gear.text(msg.gear);
+        }
+        //console.log(msg);
+        speedo.update(Math.round(msg.speed * 3.6), msg.throttle, msg.brake);
+        rpm.update(Math.round(msg.rpm * 10));
+    });
 </script>
 </body>
 </html>
