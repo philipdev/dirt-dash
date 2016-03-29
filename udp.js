@@ -3,12 +3,15 @@
  */
 
 var EventEmitter = require('events').EventEmitter;
+var MESSAGE = 0; // suffix for dir msgs
+var CLIENT = 1; // key ip, value is identifier
 
 var dgram = require('dgram');
 var levelup = require('level');
 var ip = require('ip');
 var long = require('long');
-
+// module variables
+var db;
 /**
  * Convert udp message buffer to javascript object.
  * @param msg
@@ -91,9 +94,9 @@ var periodicData = [];
  * Add periodic data list if a new period is formed the averged out data is returned otherwize undefied.
  * @param obj
  */
-function addPeriodic(obj) {
+function addPeriodic(obj, interval) {
     var result;
-
+	// figure out if the current value still is inside the current period.
     if(periodicData.length > 0 && Math.round(periodicData[periodicData.length-1].time * 10) < Math.round(obj.time * 10) ) {
         // first calculate sum
         var result = empty(), last = periodicData[periodicData.length-1];
@@ -125,7 +128,7 @@ function addPeriodic(obj) {
 
         result.speed /= periodicData.length;
         result.throttle /= periodicData.length;
-        result.break /= periodicData.length;
+        result.brake /= periodicData.length;
         result.clutch /= periodicData.length;
         result.rpm /= periodicData.length;
         result.steering /= periodicData.length;
@@ -149,16 +152,52 @@ function addPeriodic(obj) {
 }
 
 
-function createKey(address, timeInMillis) {
+function createKeyMin(address) {
+	return createKey(address, new Date(0));
+}
+
+function createKeyMax(address) {
+	return createKey(address, new Date(3000,0,0,0,0,0));
+}
+
+function createKey(address, date) {
+	// y 2b, m 1b, d 1b, h 1b, m 1b, s 1b, mm 2b
+	var key = new Buffer(address.length + 11);
+	key.writeUInt16BE(MESSAGE, 0); // type
+	address.copy(key, 2, 0, address.length); // clientid
+	key.writeUInt16BE(date.getFullYear(), address.length + 2);
+	key.writeUInt8(date.getMonth(), address.length + 4);
+	key.writeUInt8(date.getDate(), address.length + 5);
+	key.writeUInt8(date.getHours(), address.length + 6);
+	key.writeUInt8(date.getMinutes(), address.length + 7);
+	key.writeUInt8(date.getSeconds(), address.length + 8);
+	key.writeUInt16BE(date.getMilliseconds(), address.length + 9);
 	
-	var key = new Buffer(address.length + 8);
-	address.copy(key, 0, 0, address.length);
-	var time = long.fromNumber(timeInMillis || Date.now(), true);
-	key.writeUInt32BE(time.getHighBitsUnsigned(), address.length);
-	key.writeUInt32BE(time.getLowBitsUnsigned(), address.length + 4);
+	
 	return key;
 }
-var db;
+
+function createClientKey(id) {
+	var buf = new Buffer(id.length);
+	buf.writeUInt16BE(CLIENT);
+	id.copy(buf, 0, 2, id.length);
+	
+	return buf;
+}
+function getTimestamp(key) {
+	return new Date(
+		key.readUInt16BE(key.length -9),
+		key.readUInt8(key.length -7),
+		key.readUInt8(key.length -6),
+		key.readUInt8(key.length -5),
+		key.readUInt8(key.length - 4),
+		key.readUInt8(key.length - 3),
+		key.readUInt16BE(key.length - 2)
+	);
+}
+
+
+
 /**
  * Factory function to listen for udp dirt messages
  */
@@ -169,40 +208,81 @@ module.exports.listen = function(port, path) {
 	
 	db = levelup(path || 'dirt.db', {keyEncoding   : 'binary', valueEncoding : 'binary'});
 	
-
     server.on('message', function(msg, remote) {
-		//console.log(remote, msg);
 		var ipaddress = ip.toBuffer(remote.address);
-        console.log('store', ipaddress);
-		db.put(createKey(ipaddress), msg);
+        
+		db.get(createClientKey(ipaddress), function(err, value) {
+			if(!err) {
+				//console.log('store message', ipaddress, value);
+				db.put(createKey(value, new Date()), msg);
+			} 
+		});
     });
 };
 
-module.exports.getData = function(address, from, to, cb) {
-	var fromKey, toKey, ipaddress =ip.toBuffer(address), result=[], stream;
-	fromKey = createKey(ipaddress, from);
-	toKey = createKey(ipaddress, to)
-	console.log('get', new Date(from), new Date(to));
+function idToBuffer(id) {
+	var buf = new Buffer(8);
+	var l = long.fromString(id,true,10);
+	buf.writeUInt32BE(l.getHighBitsUnsigned() ,0);
+	buf.writeUInt32BE(l.getLowBitsUnsigned() ,4);
+	
+	return buf;
+}
+
+module.exports.register = function(ipaddress, id) {
+	db.put(createClientKey(ip.toBuffer(ipaddress)), idToBuffer(id) );
+};
+
+module.exports.getRecordings = function(id, interval, cb) {
+	var result =[], lastTime, firstTime, idBuf = idToBuffer(id);
+	db.createKeyStream({
+		gt: createKeyMin(idBuf), 
+		lt: createKeyMax(idBuf)
+	}).on('data', function(key) {
+		var time = getTimestamp(key);	
+		if(lastTime === undefined) {
+			lastTime = time;
+			firstTime = time;
+		}
+		//console.log('%s > %s + %d', time, lastTime,  interval);
+		if(time.getTime() > lastTime.getTime() + interval) {
+			console.log('new gap found');
+			result.push([firstTime, lastTime]);
+			firstTime = time;
+			lastTime = time;
+		} else {
+			lastTime = time;
+		}
+	}).on('end', function() {
+		if(lastTime && firstTime && lastTime.getTime() !== firstTime.getTime()) {
+			result.push([firstTime, lastTime]);
+		}
+		cb(undefined, result);
+	}).on('error', function(error) {
+		cb(error);
+	});
+};
+
+module.exports.getData = function(id, from, to, cb) {
+	
+	var fromKey, toKey, result=[], client = idToBuffer(id);
+	fromKey = createKey(client, new Date(from));
+	toKey = createKey(client, new Date(to));
 	
 	db.createReadStream({
-		gt:fromKey, 
+		gt: fromKey, 
 		lt: toKey
 	})
 	.on('data', function(data){
-		//console.log('data', data);
-		var high = data.key.readUInt32BE(4);
-		var low = data.key.readUInt32BE(8);
-		var l = new long(high, low, true);
 		
 		var obj = convert(data.value);
-		obj.timestamp = l.toNumber();
-		
+		obj.timestamp = getTimestamp(data.key);
 		result.push(obj);
 		
 	})
 	.on('end', function(){
 		console.log('result:', result.length);
-		cb(undefined, address, result);
+		cb(undefined, client, result);
 	})
 	.on('error', function(e) {
 		cb(err);
@@ -212,4 +292,7 @@ module.exports.getData = function(address, from, to, cb) {
 
 if (require.main === module) {
     module.exports.listen();
+	module.exports.getRecordings('76561198256936970', 30000, function(err, result) {
+		console.log(result);
+	});
 }

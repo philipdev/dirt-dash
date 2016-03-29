@@ -2,120 +2,166 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dirt Rally Charts</title>
-    <style>
-        .throttle {
-            fill: green;
-        }
-        .speed {
-            fill: blue;
-        }
-        .brake {
-            fill: red;
-        }
-        .steer {
-            fill: black;
-        }
-        .speedRearLeft {
-
-        }
-        .speedRearRight {
-
-        }
-        .speedFrontRight {
-
-        }
-        .speedFrontLeft {
-
-        }
-
-        .frontDiff {
-            fill : #e80900;
-        }
-        .rearDiff {
-            fill : #00fc4e;
-        }
-        .centerDiff {
-            fill : #3b73a8;
-        }
-
+    <title>Dirt Rally Charts</title>    
+	<style>
+  		
+	.axis path, .line {
+		fill: none;
+		stroke: #000;
+		shape-rendering: crispEdges;
+	}
+	.frontLeft {
+		stroke:blue;
+	}
+	.frontRight {
+		stroke:red;
+	}
+	.rearRight {
+		stroke:green;
+	}
+	.rearLeft {
+		stroke:orange;
+	}
     </style>
 </head>
 <body>
+
+<div id="recordings" style="float:right; width:20%"><h2>Recordings</h2></div>
+<div style="width:80%">
+	<div>
+	<h2>Speed</h2>
+	<svg id="speed" viewBox="0 0 900 200" width="100%" preserveAspectRatio="xMaxYMid meet"></svg></div>
+	<div><h2>Wheel speed</h2>
+	<svg id="wheelSpeed" viewBox="0 0 900 200" width="100%" preserveAspectRatio="xMaxYMid meet"></svg></div>
+	<div><h2>Suspension</h2>
+	<svg id="suspension" viewBox="0 0 900 200" width="100%" preserveAspectRatio="xMaxYMid meet"></svg></div>
+</div>
 <script src="d3.js" charset="utf-8"></script>
-<!--script src="/socket.io/socket.io.js"></script-->
+<script src="app.js" charset="utf-8"></script>
+
 <script>
-
-    var svg = d3.select('body').append('svg');
-    svg.attr('width', '1024px')
-    svg.attr('height', '800px').style('background', '#dff0d8')
-
-    var suspensionScale = d3.scale.linear();
-    suspensionScale.domain([-40, 40]);
-    suspensionScale.range([0, 800]);
-
-    function updateChartLine(clazz, getY) {
-        var throttle = svg.selectAll('circle.' + clazz).data(data);
-        throttle.attr('r',2)
-                .attr('cx', function (data, i) {
-                    return i;
-                })
-                .attr('cy',getY );
-
-        throttle.exit().remove();
-        throttle.enter().append('circle').attr('class', clazz);
-    }
-
-    function update(data) {
-
-        updateChartLine('throttle', function (data) {
-            return 800 - (data.throttle * 800);
-        });
-        updateChartLine('brake', function (data) {
-            return 800 - (data.brake * 800);
-        });
-        updateChartLine('speed', function (data) {
-            return 800 - (data.speed * 3.6 * 4);
-        });
-
-        updateChartLine('steer', function (data) {
-            return 400 + (data.steering * 400);
-        });
-
-
-    }
-</script>
-<script>
-	var lastTime = new Date().getTime();
-	var data = [];
-	function getData() {
-		var time = new Date().getTime();
-		d3.xhr('/').post(JSON.stringify({from: lastTime,  to: time }), function(error, response) {
-			if(error) {
-				console.log(error);
-			} else {
-				var result = JSON.parse(response.responseText);
-				console.log('result', result.length);
-				var expireTime = time - 120000;
-				for(var i=data.length; i >=0; i--) {
-					if(data.timestamp < expireTime) {
-						data.splice(0, i);
-						break;
-					}
-				}
-				// find last element larger older than 2 minutes
-				if(result.length > 0) {
-					Array.prototype.push.apply(data, result); // still need to remove for the given time frame
-					update(data);
-					lastTime = time; // use last element in the array
-				}
-			}
-			setTimeout(getData, 1000);
-		});
+	
+	function createLine(yFunc, xScale) {
+		var line = d3.svg.line();
+		line.x(function(d) { 
+			return xScale(new Date(d.timestamp)); 
+		})
+		line.y(yFunc);
+		return line;
 	}
-	getData();
+	
+	function appendPath(parent, line, data, styleClass) {
+		var path = parent.append("path")
+		path.datum(data);
+		path.attr("class", "line " + styleClass)
+		path.attr("d", line);
+		
+		return path;
+	}
+	
+	
+	function updateWheels(id, property, data) {
+		var svg = d3.select(id);
+		svg.select('.group').remove();
+		var x = d3.time.scale();
+		x.ticks(d3.time.second, 30);
+		var y = d3.scale.linear();
+		x.range([50,900]);
+		y.range([150,0]);
+		
+		
+		var xAxis = d3.svg.axis().scale(x).orient("bottom");
+		var yAxis = d3.svg.axis().scale(y).orient("left");
+		
+		var leftFrontLine = createLine(function(d) { return y(d[property].frontLeft); }, x);
+		var rightFrontLine = createLine(function(d) { return y(d[property].frontRight); }, x);
+		var leftRearLine = createLine(function(d) { return y(d[property].rearLeft); }, x);	
+		var rightRearLine = createLine(function(d) { return y(d[property].rearRight); }, x);	
+		
+		x.domain([new Date(data[0].timestamp), new Date(data[data.length-1].timestamp)]);
+		var min = d3.min(data, function(d) {
+			return d3.min([d[property].frontLeft, d[property].frontRight, d[property].rearLeft, d[property].rearRight]);
+		});
+		var max = d3.max(data, function(d) {
+			return d3.max([d[property].frontLeft, d[property].frontRight, d[property].rearLeft, d[property].rearRight]);
+		});
+		
+		y.domain([min,max]);
+		
+		
+		var speedGroup = svg.append("g")
+		.attr('class', 'group')	;
 
+		appendPath(speedGroup, leftFrontLine, data, 'frontLeft')
+		appendPath(speedGroup, rightFrontLine, data, 'frontRight')
+		appendPath(speedGroup, leftRearLine, data, 'rearLeft')
+		appendPath(speedGroup, rightRearLine, data, 'rearRight')
+			
+		speedGroup.append("g")
+		.attr('class', 'y axis')
+		.attr('transform', 'translate(50)')
+		.call(yAxis);
+	}
+	
+	function updateCharts(data) {
+		var svg = d3.select('#speed');
+		svg.select('.speedGroup').remove();
+		var x = d3.time.scale();
+		var y = d3.scale.linear();
+		x.range([50,900]);
+		y.range([150,0]);
+		
 
+		var xAxis = d3.svg.axis().scale(x).orient("bottom");
+		var yAxis = d3.svg.axis().scale(y).orient("left");		
+		
+		var speed = createLine(function(d) { return y(d.speed * 3.6); }, x);
+		
+		x.domain([new Date(data[0].timestamp), new Date(data[data.length-1].timestamp)]);
+		y.domain([0,d3.max(data, function(d) { return d.speed * 3.6; })]);
+		
+		var speedGroup = svg.append("g")
+		.attr('class', 'speedGroup')
+		
+		speedGroup.append("g")
+		.attr('class', 'x axis')
+		.attr('transform', 'translate(0, 250)')
+		.call(xAxis);
+		
+		speedGroup.append("g")
+		.attr('class', 'y axis')
+		.attr('transform', 'translate(50)')
+		.call(yAxis);	
+		
+		appendPath(speedGroup, speed, data, 'speed')
+
+	}
+	
+	getRecordings(function(recs) {
+		var root = d3.select("#recordings");
+		var recNodes = root.selectAll('.record').data(recs);
+		recNodes.enter()
+		.append('div')
+		.attr('class','record')
+		.text(function(r) {
+			var format = d3.time.format("%d/%m/%Y %H:%M.%S");
+			var start = new Date(r[0]);
+			var end = new Date(r[1]);
+			var time = Math.round((end.getTime() - start.getTime()) / 1000);
+			
+			return format(start) + ' : ' + time + 's';
+		}).on('click', function(r) {
+			var start = new Date(r[0]), end = new Date(r[1]);
+			getData( start.getTime(), end.getTime(), function(err, result) {
+				updateCharts(result);
+				updateWheels('#wheelSpeed', 'wheelSpeed', result);
+				updateWheels('#suspension', 'suspension', result);
+				
+			});
+		});
+
+		recNodes.exit().remove();
+	});
 </script>
 </body>
 </html>

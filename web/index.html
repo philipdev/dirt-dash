@@ -2,84 +2,12 @@
 <html>
 <head>
     <meta charset="utf-8">
-
-    <style>
-
-
-        html, body, .content {
-            padding: 0;
-            margin: 0;
-            border: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        body {
-            background: navy;
-        }
-
-        .gear-text {
-            text-anchor: start;
-            dominant-baseline: hanging;
-
-            font-size: 20px;
-            fill: mintcream;
-            font-family: Arial, Helvetica;
-        }
-
-        .speed {
-            fill: lightseagreen;
-
-        }
-
-        .speed-line-text {
-            font-size: 4px;
-            text-anchor: middle;
-            dominant-baseline: central;
-            fill: mintcream;
-        }
-
-        .speed-line {
-
-            stroke-width: 0.35;
-            stroke: mintcream;
-        }
-
-        .speed-outline {
-            fill: mintcream;
-        }
-
-        .speed-text {
-            text-anchor: middle;
-            dominant-baseline: central;
-            font-family: Arial, Helvetica;
-            font-size: 20px;
-            fill: mintcream;
-        }
-
-        .subtitle-text {
-            font-size: 5px;
-            text-anchor: middle;
-            fill: mintcream;
-        }
-
-        .throttle {
-            fill: turquoise;
-        }
-
-        .brake {
-            fill: crimson;
-        }
-
-        .content {
-            text-align: center;
-        }
-    </style>
-
-    <script src="http://d3js.org/d3.v3.min.js"></script>
-
+    <link rel="stylesheet" type="text/css" href="style.css">
+    
 </head>
 <body>
+<a href="auth/steam"><img src="steam.png"></a>
+<script src="http://d3js.org/d3.v3.min.js"></script>	
 <script>
 
     function Meter(container, x, y, radius, max, step, subtitle) {
@@ -267,12 +195,11 @@
         y:5
     });
 
-
 </script>
 <script src="d3.js" charset="utf-8"></script>
-<script src="/socket.io/socket.io.js"></script>
+<script src="app.js" charset="utf-8"></script>
 <script>
-    var socket = io.connect();
+
     socket.on('update', function (msg) {
         var gear = d3.select('.gear-text');
         if (msg.gear === 0) {
